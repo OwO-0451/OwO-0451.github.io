@@ -1,15 +1,60 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="font">
-    <img src="city-lightning-storm2.gif"/>
-    <h1>Мой нейрослоп?</h1>
-    <h2>Ура! Мой первый нейрослоп работает!</h2>
-</body>
-</html>
+<script type="module">
+  // 1. Импортируем необходимые функции из Firebase SDK
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-analytics.js";
+  
+  // Добавляем импорт модуля авторизации и провайдера GitHub
+  import { 
+    getAuth, 
+    signInWithPopup, 
+    GithubAuthProvider 
+  } from "https://gstatic.com";
 
+  // Ваша конфигурация
+  const firebaseConfig = {
+    apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
+    authDomain: "owo-0451.firebaseapp.com",
+    projectId: "owo-0451",
+    storageBucket: "owo-0451.firebasestorage.app",
+    messagingSenderId: "802512711321",
+    appId: "1:802512711321:web:6b329262f4fdb7c81e1208",
+    measurementId: "G-S0H24ZVRXM"
+  };
 
+  // Инициализация Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
 
+  // 2. Инициализируем сервис авторизации и провайдер GitHub
+  const auth = getAuth(app);
+  const provider = new GithubAuthProvider();
+
+  // (Опционально) Можно запросить дополнительные доступы к аккаунту GitHub, например чтение репозиториев:
+  // provider.addScope('repo');
+
+  // 3. Функция для запуска авторизации (например, по нажатию на кнопку)
+  async function loginWithGitHub() {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      
+      // Пользователь успешно залогинен
+      const user = result.user;
+      console.log("Успешный вход! Пользователь:", user);
+      
+      // Токен доступа GitHub (если нужно делать запросы к GitHub API от имени пользователя)
+      const credential = GithubAuthProvider.credentialFromResult(result);
+      const token = credential.accessToken;
+      console.log("GitHub Access Token:", token);
+
+    } catch (error) {
+      console.error("Ошибка при авторизации через GitHub:", error.message);
+      // Здесь можно обработать специфичные ошибки, например auth/account-exists-with-different-credential
+    }
+  }
+
+  // Пример: вешаем функцию на кнопку с id="github-login-btn"
+  document.getElementById('github-login-btn')?.addEventListener('click', loginWithGitHub);
+</script>
+
+<!-- Пример кнопки для входа -->
+<button id="github-login-btn">Войти через GitHub</button>
