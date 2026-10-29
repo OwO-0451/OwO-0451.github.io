@@ -1,60 +1,49 @@
+<button id="github-login-btn">Войти через GitHub</button>
+
 <script type="module">
-  // 1. Импортируем необходимые функции из Firebase SDK
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.1.0/firebase-analytics.js";
-  
-  // Добавляем импорт модуля авторизации и провайдера GitHub
+  import { initializeApp } from "https://gstatic.com";
   import { 
     getAuth, 
     signInWithPopup, 
     GithubAuthProvider 
   } from "https://gstatic.com";
 
-  // Ваша конфигурация
   const firebaseConfig = {
     apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
-    authDomain: "owo-0451.firebaseapp.com",
+    authDomain: "://firebaseapp.com",
     projectId: "owo-0451",
     storageBucket: "owo-0451.firebasestorage.app",
     messagingSenderId: "802512711321",
-    appId: "1:802512711321:web:6b329262f4fdb7c81e1208",
-    measurementId: "G-S0H24ZVRXM"
+    appId: "1:802512711321:web:6b329262f4fdb7c81e1208"
   };
 
-  // Инициализация Firebase
+  console.log("1. Инициализация Firebase...");
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-
-  // 2. Инициализируем сервис авторизации и провайдер GitHub
   const auth = getAuth(app);
   const provider = new GithubAuthProvider();
+  console.log("2. Firebase Auth готов.");
 
-  // (Опционально) Можно запросить дополнительные доступы к аккаунту GitHub, например чтение репозиториев:
-  // provider.addScope('repo');
-
-  // 3. Функция для запуска авторизации (например, по нажатию на кнопку)
   async function loginWithGitHub() {
+    console.log("3. Клик зафиксирован. Попытка открыть Popup...");
     try {
       const result = await signInWithPopup(auth, provider);
-      
-      // Пользователь успешно залогинен
-      const user = result.user;
-      console.log("Успешный вход! Пользователь:", user);
-      
-      // Токен доступа GitHub (если нужно делать запросы к GitHub API от имени пользователя)
-      const credential = GithubAuthProvider.credentialFromResult(result);
-      const token = credential.accessToken;
-      console.log("GitHub Access Token:", token);
-
+      console.log("Успех! Данные пользователя:", result.user);
+      alert(`Добро пожаловать, ${result.user.displayName}!`);
     } catch (error) {
-      console.error("Ошибка при авторизации через GitHub:", error.message);
-      // Здесь можно обработать специфичные ошибки, например auth/account-exists-with-different-credential
+      console.error("Критическая ошибка авторизации:");
+      console.error("Код ошибки (code):", error.code);
+      console.error("Сообщение (message):", error.message);
+      console.error("Полный объект ошибки:", error);
+      
+      alert(`Ошибка [${error.code}]: ${error.message}`);
     }
   }
 
-  // Пример: вешаем функцию на кнопку с id="github-login-btn"
-  document.getElementById('github-login-btn')?.addEventListener('click', loginWithGitHub);
+  const btn = document.getElementById('github-login-btn');
+  if (btn) {
+    btn.addEventListener('click', loginWithGitHub);
+    console.log("4. Обработчик клика успешно привязан к кнопке.");
+  } else {
+    console.error("Критическая ошибка: Кнопка 'github-login-btn' отсутствует в DOM дереве!");
+  }
 </script>
-
-<!-- Пример кнопки для входа -->
-<button id="github-login-btn">Войти через GitHub</button>
