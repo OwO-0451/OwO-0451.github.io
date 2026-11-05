@@ -1,49 +1,91 @@
+```html
 <button id="github-login-btn">Войти через GitHub</button>
+<button id="logout-btn" style="display:none">Выйти</button>
+<div id="user-info"></div>
 
 <script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import { 
-    getAuth, 
-    signInWithPopup, 
-    GithubAuthProvider 
-  } from "https://gstatic.com";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    onAuthStateChanged,
+    signOut,
+    GithubAuthProvider
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
-    authDomain: "://firebaseapp.com",
+    authDomain: "owo-0451.firebaseapp.com",
     projectId: "owo-0451",
     storageBucket: "owo-0451.firebasestorage.app",
     messagingSenderId: "802512711321",
     appId: "1:802512711321:web:6b329262f4fdb7c81e1208"
   };
 
-  console.log("1. Инициализация Firebase...");
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const provider = new GithubAuthProvider();
-  console.log("2. Firebase Auth готов.");
+
+  provider.addScope("read:user");
+
+  const loginBtn  = document.getElementById("github-login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const userInfo  = document.getElementById("user-info");
 
   async function loginWithGitHub() {
-    console.log("3. Клик зафиксирован. Попытка открыть Popup...");
     try {
       const result = await signInWithPopup(auth, provider);
-      console.log("Успех! Данные пользователя:", result.user);
-      alert(`Добро пожаловать, ${result.user.displayName}!`);
+      console.log("Успех:", result.user);
     } catch (error) {
-      console.error("Критическая ошибка авторизации:");
-      console.error("Код ошибки (code):", error.code);
-      console.error("Сообщение (message):", error.message);
-      console.error("Полный объект ошибки:", error);
-      
+      if (
+        error.code === "auth/popup-blocked" ||
+        error.code === "auth/popup-closed-by-user" ||
+        error.code === "auth/cancelled-popup-request" ||
+        error.code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        console.warn("Popup не сработал, переключаюсь на redirect:", error.code);
+        await signInWithRedirect(auth, provider);
+        return;
+      }
+      console.error("Ошибка авторизации:", error.code, error.message, error);
       alert(`Ошибка [${error.code}]: ${error.message}`);
     }
   }
 
-  const btn = document.getElementById('github-login-btn');
-  if (btn) {
-    btn.addEventListener('click', loginWithGitHub);
-    console.log("4. Обработчик клика успешно привязан к кнопке.");
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result?.user) console.log("Вход через redirect:", result.user);
+    })
+    .catch((error) => {
+      console.error("Redirect error:", error.code, error.message);
+    });
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      loginBtn.style.display  = "none";
+      logoutBtn.style.display = "inline-block";
+      userInfo.textContent = `Вы вошли как ${user.displayName || user.email || user.uid}`;
+    } else {
+      loginBtn.style.display  = "inline-block";
+      logoutBtn.style.display = "none";
+      userInfo.textContent = "";
+    }
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Ошибка выхода:", error);
+    }
+  });
+
+  if (loginBtn) {
+    loginBtn.addEventListener("click", loginWithGitHub);
   } else {
-    console.error("Критическая ошибка: Кнопка 'github-login-btn' отсутствует в DOM дереве!");
+    console.error("Кнопка #github-login-btn не найдена в DOM");
   }
 </script>
+```
