@@ -2,13 +2,23 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Auth (GitHub & Google)</title>
+    <title>Auth & Realtime Database</title>
 </head>
 <body>
-    <button id="google-login-btn">Войти через Google</button>
-    <button id="github-login-btn">Войти через GitHub</button>
-    <button id="logout-btn" style="display:none">Выйти</button>
-    <div id="user-info"></div>
+    <div id="auth-section">
+        <button id="google-login-btn">Войти через Google</button>
+        <button id="github-login-btn">Войти через GitHub</button>
+    </div>
+
+    <div id="app-section" style="display:none">
+        <button id="logout-btn">Выйти</button>
+        <div id="user-info"></div>
+        
+        <form id="data-form" style="margin-top: 20px;">
+            <input type="text" id="data-input" placeholder="Введите сообщение" required>
+            <button type="submit">Отправить в базу данных</button>
+        </form>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
@@ -22,6 +32,12 @@
             GithubAuthProvider,
             GoogleAuthProvider 
         } from "https://gstatic.com";
+        import { 
+            getDatabase, 
+            ref, 
+            push, 
+            set 
+        } from "https://gstatic.com";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
@@ -29,21 +45,28 @@
             projectId: "owo-0451",
             storageBucket: "owo-0451.firebasestorage.app",
             messagingSenderId: "802512711321",
-            appId: "1:802512711321:web:6b329262f4fdb7c81e1208"
+            appId: "1:802512711321:web:6b329262f4fdb7c81e1208",
+            databaseURL: "https://firebaseio.com"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const database = getDatabase(app);
         
         const githubProvider = new GithubAuthProvider();
         githubProvider.addScope("read:user");
-
         const googleProvider = new GoogleAuthProvider();
 
         const githubLoginBtn = document.getElementById("github-login-btn");
         const googleLoginBtn = document.getElementById("google-login-btn");
         const logoutBtn = document.getElementById("logout-btn");
         const userInfo = document.getElementById("user-info");
+        const authSection = document.getElementById("auth-section");
+        const appSection = document.getElementById("app-section");
+        const dataForm = document.getElementById("data-form");
+        const dataInput = document.getElementById("data-input");
+
+        let currentUser = null;
 
         async function login(provider) {
             try {
@@ -74,15 +97,14 @@
             });
 
         onAuthStateChanged(auth, (user) => {
+            currentUser = user;
             if (user) {
-                githubLoginBtn.style.display = "none";
-                googleLoginBtn.style.display = "none";
-                logoutBtn.style.display = "inline-block";
+                authSection.style.display = "none";
+                appSection.style.display = "block";
                 userInfo.textContent = `Вы вошли как ${user.displayName || user.email || user.uid}`;
             } else {
-                githubLoginBtn.style.display = "inline-block";
-                googleLoginBtn.style.display = "inline-block";
-                logoutBtn.style.display = "none";
+                authSection.style.display = "block";
+                appSection.style.display = "none";
                 userInfo.textContent = "";
             }
         });
@@ -92,6 +114,28 @@
                 await signOut(auth);
             } catch (error) {
                 console.error("Ошибка выхода:", error);
+            }
+        });
+
+        dataForm?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const textValue = dataInput.value.trim();
+            if (!textValue) return;
+
+            try {
+                const userMessagesRef = ref(database, 'messages/' + currentUser.uid);
+                const newMessageRef = push(userMessagesRef);
+                await set(newMessageRef, {
+                    text: textValue,
+                    timestamp: Date.now()
+                });
+                dataInput.value = "";
+                alert("Данные успешно отправлены!");
+            } catch (error) {
+                console.error("Ошибка записи в БД:", error);
+                alert(`Ошибка отправки: ${error.message}`);
             }
         });
 
