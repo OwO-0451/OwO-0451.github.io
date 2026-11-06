@@ -13,7 +13,7 @@
     <div id="app-section" style="display:none">
         <button id="logout-btn">Выйти</button>
         <div id="user-info"></div>
-        
+
         <form id="data-form" style="margin-top: 20px;">
             <input type="text" id="data-input" placeholder="Введите сообщение" required>
             <button type="submit">Отправить в базу данных</button>
@@ -21,38 +21,38 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://gstatic.com";
-        import { 
-            getAuth, 
-            signInWithPopup, 
-            signInWithRedirect, 
-            getRedirectResult, 
-            onAuthStateChanged, 
-            signOut, 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import {
+            getAuth,
+            signInWithPopup,
+            signInWithRedirect,
+            getRedirectResult,
+            onAuthStateChanged,
+            signOut,
             GithubAuthProvider,
-            GoogleAuthProvider 
-        } from "https://gstatic.com";
-        import { 
-            getDatabase, 
-            ref, 
-            push, 
-            set 
-        } from "https://gstatic.com";
+            GoogleAuthProvider
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import {
+            getDatabase,
+            ref,
+            push,
+            set
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
-            authDomain: "://firebaseapp.com",
+            authDomain: "owo-0451.firebaseapp.com",
             projectId: "owo-0451",
             storageBucket: "owo-0451.firebasestorage.app",
             messagingSenderId: "802512711321",
             appId: "1:802512711321:web:6b329262f4fdb7c81e1208",
-            databaseURL: "https://firebaseio.com"
+            databaseURL: "https://owo-0451-default-rtdb.firebaseio.com"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const database = getDatabase(app);
-        
+
         const githubProvider = new GithubAuthProvider();
         githubProvider.addScope("read:user");
         const googleProvider = new GoogleAuthProvider();
