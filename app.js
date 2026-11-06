@@ -15,7 +15,7 @@ import {
     push,
     set,
     onValue,
-    remove // <-- ДОБАВИЛИ ИМПОРТ ФУНКЦИИ УДАЛЕНИЯ
+    remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // --- Конфигурация Firebase ---
@@ -29,7 +29,7 @@ const firebaseConfig = {
     databaseURL: "https://owo-0451-default-rtdb.firebaseio.com"
 };
 
-// Инициализация
+// Инициализация Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);
@@ -84,6 +84,7 @@ getRedirectResult(auth).then((result) => {
     console.error("Redirect error:", error.code, error.message);
 });
 
+// Слежение за состоянием авторизации
 onAuthStateChanged(auth, (user) => {
     if (user) {
         authSection.classList.add("hidden");
@@ -132,7 +133,7 @@ async function deleteMessage(userId, messageId) {
     if (!confirm("Вы уверены, что хотите удалить это сообщение?")) return;
     
     try {
-        // Формируем путь к конкретному сообщению: messages/UID/ID_СООБЩЕНИЯ
+        // Формируем путь к конкретному сообщению
         const messageRef = ref(database, `messages/${userId}/${messageId}`);
         await remove(messageRef);
         // Перезагружать список не нужно, onValue сам заметит изменения и обновит экран
@@ -142,6 +143,7 @@ async function deleteMessage(userId, messageId) {
     }
 }
 
+// --- Выход ---
 logoutBtn?.addEventListener("click", async () => {
     try {
         await signOut(auth);
@@ -150,19 +152,26 @@ logoutBtn?.addEventListener("click", async () => {
     }
 });
 
+// --- Кнопки входа ---
 githubLoginBtn?.addEventListener("click", () => login(githubProvider));
 googleLoginBtn?.addEventListener("click", () => login(googleProvider));
 
-// --- Функция загрузки сообщений (Realtime) ---
+// --- Функция загрузки и отображения сообщений (Realtime) ---
 function loadMessages(uid) {
     const userMessagesRef = ref(database, 'messages/' + uid);
     
     unsubscribeMessages = onValue(userMessagesRef, (snapshot) => {
-        messagesList.innerHTML = ""; 
+        messagesList.innerHTML = ""; // Очищаем список перед обновлением
         const data = snapshot.val();
         
         if (data) {
-            const sortedMessages = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
+            // Превращаем объект в массив пар [ключ, значение], чтобы не потерять ID сообщения
+            const messagesArray = Object.entries(data).map(([key, value]) => {
+                return { ...value, id: key }; // Сохраняем ключ в свойство id
+            });
+
+            // Сортируем по времени: новые сообщения сверху
+            const sortedMessages = messagesArray.sort((a, b) => b.timestamp - a.timestamp);
             
             sortedMessages.forEach(msg => {
                 const li = document.createElement("li");
@@ -171,10 +180,12 @@ function loadMessages(uid) {
                 const contentDiv = document.createElement("div");
                 contentDiv.className = "msg-content";
                 
+                // Безопасный вывод текста (защита от XSS)
                 const textNode = document.createTextNode(msg.text);
                 const timeSpan = document.createElement("span");
                 timeSpan.className = "msg-time";
                 
+                // Форматирование даты
                 const date = new Date(msg.timestamp);
                 const timeString = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 const dateString = date.toLocaleDateString('ru-RU');
@@ -187,24 +198,24 @@ function loadMessages(uid) {
                 const deleteBtn = document.createElement("button");
                 deleteBtn.textContent = "Удалить";
                 deleteBtn.className = "delete-btn";
-                // Передаем UID пользователя и уникальный ключ сообщения (msg.key - это тот самый -P5jcds...)
-                deleteBtn.onclick = () => deleteMessage(uid, msg.key);
+                // Передаем msg.id, который мы извлекли выше
+                deleteBtn.onclick = () => deleteMessage(uid, msg.id);
                 
                 li.appendChild(contentDiv);
                 li.appendChild(deleteBtn);
                 messagesList.appendChild(li);
             });
         } else {
+            // Если сообщений нет
             const li = document.createElement("li");
             li.textContent = "Сообщений пока нет. Напишите первое!";
             li.style.color = "#777";
             li.style.fontStyle = "italic";
             li.style.textAlign = "center";
-            li.style.display = "block"; // Переопределяем flex, чтобы текст был по центру
+            li.style.display = "block"; // Сбрасываем flex для пустого сообщения
             messagesList.appendChild(li);
         }
     }, (error) => {
         console.error("Ошибка чтения из БД:", error);
-        alert("Не удалось загрузить сообщения. Проверьте правила безопасности в Firebase.");
     });
 }
