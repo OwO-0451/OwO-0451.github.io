@@ -14,7 +14,8 @@ import {
     ref,
     push,
     set,
-    onValue
+    onValue,
+    remove // <-- ДОБАВИЛИ ИМПОРТ ФУНКЦИИ УДАЛЕНИЯ
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // --- Конфигурация Firebase ---
@@ -48,7 +49,6 @@ const dataForm = document.getElementById("data-form");
 const dataInput = document.getElementById("data-input");
 const messagesList = document.getElementById("messages-list");
 
-// Переменная для отписки от обновлений базы данных (чтобы не было утечек памяти при выходе)
 let unsubscribeMessages = null;
 
 // --- Функции авторизации ---
@@ -78,31 +78,25 @@ async function login(provider) {
     }
 }
 
-// Обработка редиректа (для мобильных устройств)
 getRedirectResult(auth).then((result) => {
     if (result?.user) console.log("Вход через redirect:", result.user);
 }).catch((error) => {
     console.error("Redirect error:", error.code, error.message);
 });
 
-// --- Слежение за состоянием авторизации ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        // Пользователь вошел
         authSection.classList.add("hidden");
         appSection.classList.remove("hidden");
         userInfo.textContent = `Вы: ${user.displayName || user.email || user.uid}`;
         
-        // Подключаем чтение сообщений из базы
         loadMessages(user.uid);
     } else {
-        // Пользователь вышел
         authSection.classList.remove("hidden");
         appSection.classList.add("hidden");
         userInfo.textContent = "";
         messagesList.innerHTML = "";
         
-        // Отписываемся от прослушивания базы, чтобы не тратить ресурсы
         if (unsubscribeMessages) {
             unsubscribeMessages();
             unsubscribeMessages = null;
@@ -126,15 +120,28 @@ dataForm?.addEventListener("submit", async (e) => {
             text: textValue,
             timestamp: Date.now()
         });
-        dataInput.value = ""; // Очищаем поле после отправки
-        // alert("Данные успешно отправлены!") // Убрали alert, так как сообщение и так появится в списке
+        dataInput.value = "";
     } catch (error) {
         console.error("Ошибка записи в БД:", error);
         alert(`Ошибка отправки: ${error.message}`);
     }
 });
 
-// --- Выход ---
+// --- Удаление сообщения ---
+async function deleteMessage(userId, messageId) {
+    if (!confirm("Вы уверены, что хотите удалить это сообщение?")) return;
+    
+    try {
+        // Формируем путь к конкретному сообщению: messages/UID/ID_СООБЩЕНИЯ
+        const messageRef = ref(database, `messages/${userId}/${messageId}`);
+        await remove(messageRef);
+        // Перезагружать список не нужно, onValue сам заметит изменения и обновит экран
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        alert(`Не удалось удалить: ${error.message}`);
+    }
+}
+
 logoutBtn?.addEventListener("click", async () => {
     try {
         await signOut(auth);
@@ -143,7 +150,6 @@ logoutBtn?.addEventListener("click", async () => {
     }
 });
 
-// Кнопки входа
 githubLoginBtn?.addEventListener("click", () => login(githubProvider));
 googleLoginBtn?.addEventListener("click", () => login(googleProvider));
 
@@ -151,41 +157,50 @@ googleLoginBtn?.addEventListener("click", () => login(googleProvider));
 function loadMessages(uid) {
     const userMessagesRef = ref(database, 'messages/' + uid);
     
-    // onValue срабатывает сразу при подключении и при каждом изменении в базе
     unsubscribeMessages = onValue(userMessagesRef, (snapshot) => {
-        messagesList.innerHTML = ""; // Очищаем список перед обновлением
+        messagesList.innerHTML = ""; 
         const data = snapshot.val();
         
         if (data) {
-            // Преобразуем объект в массив и сортируем по времени (старые сверху или снизу — как вам нравится)
-            // Здесь сортируем так, чтобы новые сообщения были вверху списка
             const sortedMessages = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
             
             sortedMessages.forEach(msg => {
                 const li = document.createElement("li");
                 
-                // Форматируем время
-                const date = new Date(msg.timestamp);
-                const timeString = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const dateString = date.toLocaleDateString('ru-RU');
+                // Блок с текстом и датой
+                const contentDiv = document.createElement("div");
+                contentDiv.className = "msg-content";
                 
-                // Безопасный вывод текста (чтобы избежать XSS атак, если кто-то напишет HTML-теги)
                 const textNode = document.createTextNode(msg.text);
                 const timeSpan = document.createElement("span");
                 timeSpan.className = "msg-time";
+                
+                const date = new Date(msg.timestamp);
+                const timeString = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const dateString = date.toLocaleDateString('ru-RU');
                 timeSpan.textContent = `${dateString} в ${timeString}`;
                 
-                li.appendChild(textNode);
-                li.appendChild(timeSpan);
+                contentDiv.appendChild(textNode);
+                contentDiv.appendChild(timeSpan);
+                
+                // Кнопка удаления
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Удалить";
+                deleteBtn.className = "delete-btn";
+                // Передаем UID пользователя и уникальный ключ сообщения (msg.key - это тот самый -P5jcds...)
+                deleteBtn.onclick = () => deleteMessage(uid, msg.key);
+                
+                li.appendChild(contentDiv);
+                li.appendChild(deleteBtn);
                 messagesList.appendChild(li);
             });
         } else {
-            // Если сообщений нет
             const li = document.createElement("li");
             li.textContent = "Сообщений пока нет. Напишите первое!";
             li.style.color = "#777";
             li.style.fontStyle = "italic";
             li.style.textAlign = "center";
+            li.style.display = "block"; // Переопределяем flex, чтобы текст был по центру
             messagesList.appendChild(li);
         }
     }, (error) => {
