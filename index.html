@@ -66,8 +66,6 @@
         const dataForm = document.getElementById("data-form");
         const dataInput = document.getElementById("data-input");
 
-        let currentUser = null;
-
         async function login(provider) {
             try {
                 const result = await signInWithPopup(auth, provider);
@@ -97,7 +95,6 @@
             });
 
         onAuthStateChanged(auth, (user) => {
-            currentUser = user;
             if (user) {
                 authSection.style.display = "none";
                 appSection.style.display = "block";
@@ -119,13 +116,14 @@
 
         dataForm?.addEventListener("submit", async (e) => {
             e.preventDefault();
-            if (!currentUser) return;
+            const user = auth.currentUser;
+            if (!user) return;
 
             const textValue = dataInput.value.trim();
             if (!textValue) return;
 
             try {
-                const userMessagesRef = ref(database, 'messages/' + currentUser.uid);
+                const userMessagesRef = ref(database, 'messages/' + user.uid);
                 const newMessageRef = push(userMessagesRef);
                 await set(newMessageRef, {
                     text: textValue,
