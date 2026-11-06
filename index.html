@@ -2,143 +2,80 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auth & Realtime Database</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px 0;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        button#logout-btn { background-color: #dc3545; }
+        button#logout-btn:hover { background-color: #c82333; }
+        input[type="text"] {
+            padding: 10px;
+            width: calc(100% - 150px);
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        form { display: flex; margin-bottom: 20px; }
+        ul { list-style-type: none; padding: 0; }
+        li {
+            background: white;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .msg-time { font-size: 12px; color: #777; display: block; margin-top: 5px;}
+        .hidden { display: none !important; }
+    </style>
 </head>
 <body>
+
+    <!-- Секция авторизации -->
     <div id="auth-section">
+        <h2>Вход в систему</h2>
         <button id="google-login-btn">Войти через Google</button>
         <button id="github-login-btn">Войти через GitHub</button>
     </div>
 
-    <div id="app-section" style="display:none">
-        <button id="logout-btn">Выйти</button>
-        <div id="user-info"></div>
+    <!-- Секция приложения (после входа) -->
+    <div id="app-section" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 id="user-info"></h3>
+            <button id="logout-btn">Выйти</button>
+        </div>
+        
+        <hr>
 
-        <form id="data-form" style="margin-top: 20px;">
-            <input type="text" id="data-input" placeholder="Введите сообщение" required>
-            <button type="submit">Отправить в базу данных</button>
+        <form id="data-form">
+            <input type="text" id="data-input" placeholder="Введите сообщение..." required>
+            <button type="submit">Отправить</button>
         </form>
+
+        <h3>Ваши сообщения:</h3>
+        <ul id="messages-list">
+            <!-- Сюда будут добавляться сообщения -->
+        </ul>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import {
-            getAuth,
-            signInWithPopup,
-            signInWithRedirect,
-            getRedirectResult,
-            onAuthStateChanged,
-            signOut,
-            GithubAuthProvider,
-            GoogleAuthProvider
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import {
-            getDatabase,
-            ref,
-            push,
-            set
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCiDGylKc7i_f8TVB6wlz-cM24D0GkU9gQ",
-            authDomain: "owo-0451.firebaseapp.com",
-            projectId: "owo-0451",
-            storageBucket: "owo-0451.firebasestorage.app",
-            messagingSenderId: "802512711321",
-            appId: "1:802512711321:web:6b329262f4fdb7c81e1208",
-            databaseURL: "https://owo-0451-default-rtdb.firebaseio.com"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const database = getDatabase(app);
-
-        const githubProvider = new GithubAuthProvider();
-        githubProvider.addScope("read:user");
-        const googleProvider = new GoogleAuthProvider();
-
-        const githubLoginBtn = document.getElementById("github-login-btn");
-        const googleLoginBtn = document.getElementById("google-login-btn");
-        const logoutBtn = document.getElementById("logout-btn");
-        const userInfo = document.getElementById("user-info");
-        const authSection = document.getElementById("auth-section");
-        const appSection = document.getElementById("app-section");
-        const dataForm = document.getElementById("data-form");
-        const dataInput = document.getElementById("data-input");
-
-        async function login(provider) {
-            try {
-                const result = await signInWithPopup(auth, provider);
-                console.log("Успех:", result.user);
-            } catch (error) {
-                if (
-                    error.code === "auth/popup-blocked" ||
-                    error.code === "auth/popup-closed-by-user" ||
-                    error.code === "auth/cancelled-popup-request" ||
-                    error.code === "auth/operation-not-supported-in-this-environment"
-                ) {
-                    console.warn("Popup не сработал, переключаюсь на redirect:", error.code);
-                    await signInWithRedirect(auth, provider);
-                    return;
-                }
-                console.error("Ошибка авторизации:", error.code, error.message, error);
-                alert(`Ошибка [${error.code}]: ${error.message}`);
-            }
-        }
-
-        getRedirectResult(auth)
-            .then((result) => {
-                if (result?.user) console.log("Вход через redirect:", result.user);
-            })
-            .catch((error) => {
-                console.error("Redirect error:", error.code, error.message);
-            });
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                authSection.style.display = "none";
-                appSection.style.display = "block";
-                userInfo.textContent = `Вы вошли как ${user.displayName || user.email || user.uid}`;
-            } else {
-                authSection.style.display = "block";
-                appSection.style.display = "none";
-                userInfo.textContent = "";
-            }
-        });
-
-        logoutBtn?.addEventListener("click", async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Ошибка выхода:", error);
-            }
-        });
-
-        dataForm?.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const user = auth.currentUser;
-            if (!user) return;
-
-            const textValue = dataInput.value.trim();
-            if (!textValue) return;
-
-            try {
-                const userMessagesRef = ref(database, 'messages/' + user.uid);
-                const newMessageRef = push(userMessagesRef);
-                await set(newMessageRef, {
-                    text: textValue,
-                    timestamp: Date.now()
-                });
-                dataInput.value = "";
-                alert("Данные успешно отправлены!");
-            } catch (error) {
-                console.error("Ошибка записи в БД:", error);
-                alert(`Ошибка отправки: ${error.message}`);
-            }
-        });
-
-        githubLoginBtn?.addEventListener("click", () => login(githubProvider));
-        googleLoginBtn?.addEventListener("click", () => login(googleProvider));
-    </script>
+    <!-- Подключаем наш JS файл -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>
