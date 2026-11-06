@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 700px; /* Немного расширили для двух колонок */
+            max-width: 700px;
             margin: 40px auto;
             padding: 0 20px;
             background-color: #f9f9f9;
@@ -56,6 +56,7 @@
 
         /* Список сообщений */
         ul { list-style-type: none; padding: 0; }
+        
         li {
             background: white;
             margin-bottom: 10px;
@@ -63,23 +64,23 @@
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between; /* Распределяет элементы по краям */
         }
 
         /* Две колонки: текст и время */
         .msg-text-col {
-            flex: 1; /* Занимает все доступное место */
+            flex-grow: 1; /* Текст занимает всё свободное место */
             word-break: break-word;
-            padding-right: 15px;
             font-size: 16px;
+            padding-right: 20px; /* Отступ от времени */
         }
+        
         .msg-time-col {
-            width: 140px; /* Фиксированная ширина для колонки времени */
             font-size: 13px;
-            color: #777;
-            text-align: right;
+            color: #777; /* Серый цвет */
             white-space: nowrap;
+            margin-right: 15px; /* Отступ от кнопки удаления */
         }
 
         /* Стили для кнопки удаления */
@@ -87,9 +88,10 @@
             background-color: transparent;
             color: #dc3545;
             padding: 5px 10px;
-            margin: 0 0 0 15px;
+            margin: 0;
             font-size: 14px;
             border: 1px solid #dc3545;
+            flex-shrink: 0; /* Запрещаем кнопке сжиматься */
         }
         .delete-btn:hover {
             background-color: #dc3545;
