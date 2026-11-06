@@ -49,7 +49,16 @@ const dataForm = document.getElementById("data-form");
 const dataInput = document.getElementById("data-input");
 const messagesList = document.getElementById("messages-list");
 
+// Кнопки сортировки
+const sortTimeBtn = document.getElementById("sort-time-btn");
+const sortTextBtn = document.getElementById("sort-text-btn");
+
+// Переменные состояния
 let unsubscribeMessages = null;
+let currentMessagesData = []; // Здесь храним сырые данные для перерисовки при сортировке
+
+// Текущее состояние сортировки
+let currentSort = { type: 'time', direction: 'desc' }; // 'time' или 'text', 'asc' или 'desc'
 
 // --- Функции авторизации ---
 async function login(provider) {
@@ -97,6 +106,7 @@ onAuthStateChanged(auth, (user) => {
         appSection.classList.add("hidden");
         userInfo.textContent = "";
         messagesList.innerHTML = "";
+        currentMessagesData = [];
         
         if (unsubscribeMessages) {
             unsubscribeMessages();
@@ -133,17 +143,54 @@ async function deleteMessage(userId, messageId) {
     if (!confirm("Вы уверены, что хотите удалить это сообщение?")) return;
     
     try {
-        // Формируем путь к конкретному сообщению
         const messageRef = ref(database, `messages/${userId}/${messageId}`);
         await remove(messageRef);
-        // Перезагружать список не нужно, onValue сам заметит изменения и обновит экран
     } catch (error) {
         console.error("Ошибка удаления:", error);
         alert(`Не удалось удалить: ${error.message}`);
     }
 }
 
-// --- Выход ---
+// --- Обработчики сортировки ---
+sortTimeBtn?.addEventListener("click", () => {
+    if (currentSort.type === 'time') {
+        currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+    } else {
+        currentSort.type = 'time';
+        currentSort.direction = 'desc';
+    }
+    updateSortButtonsUI();
+    renderMessages();
+});
+
+sortTextBtn?.addEventListener("click", () => {
+    if (currentSort.type === 'text') {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.type = 'text';
+        currentSort.direction = 'asc';
+    }
+    updateSortButtonsUI();
+    renderMessages();
+});
+
+function updateSortButtonsUI() {
+    // Сброс классов
+    sortTimeBtn.classList.remove("active");
+    sortTextBtn.classList.remove("active");
+
+    // Подсветка активной кнопки и обновление текста со стрелками
+    if (currentSort.type === 'time') {
+        sortTimeBtn.classList.add("active");
+        sortTimeBtn.textContent = `Времени ${currentSort.direction === 'desc' ? '↓' : '↑'}`;
+        sortTextBtn.textContent = "Тексту (А-Я)";
+    } else {
+        sortTextBtn.classList.add("active");
+        sortTextBtn.textContent = `Тексту (${currentSort.direction === 'asc' ? 'А-Я' : 'Я-А'})`;
+        sortTimeBtn.textContent = "Времени";
+    }
+}
+
 logoutBtn?.addEventListener("click", async () => {
     try {
         await signOut(auth);
@@ -152,70 +199,88 @@ logoutBtn?.addEventListener("click", async () => {
     }
 });
 
-// --- Кнопки входа ---
 githubLoginBtn?.addEventListener("click", () => login(githubProvider));
 googleLoginBtn?.addEventListener("click", () => login(googleProvider));
 
-// --- Функция загрузки и отображения сообщений (Realtime) ---
+// --- Загрузка данных из БД ---
 function loadMessages(uid) {
     const userMessagesRef = ref(database, 'messages/' + uid);
     
     unsubscribeMessages = onValue(userMessagesRef, (snapshot) => {
-        messagesList.innerHTML = ""; // Очищаем список перед обновлением
         const data = snapshot.val();
         
         if (data) {
-            // Превращаем объект в массив пар [ключ, значение], чтобы не потерять ID сообщения
-            const messagesArray = Object.entries(data).map(([key, value]) => {
-                return { ...value, id: key }; // Сохраняем ключ в свойство id
-            });
-
-            // Сортируем по времени: новые сообщения сверху
-            const sortedMessages = messagesArray.sort((a, b) => b.timestamp - a.timestamp);
-            
-            sortedMessages.forEach(msg => {
-                const li = document.createElement("li");
-                
-                // Блок с текстом и датой
-                const contentDiv = document.createElement("div");
-                contentDiv.className = "msg-content";
-                
-                // Безопасный вывод текста (защита от XSS)
-                const textNode = document.createTextNode(msg.text);
-                const timeSpan = document.createElement("span");
-                timeSpan.className = "msg-time";
-                
-                // Форматирование даты
-                const date = new Date(msg.timestamp);
-                const timeString = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const dateString = date.toLocaleDateString('ru-RU');
-                timeSpan.textContent = `${dateString} в ${timeString}`;
-                
-                contentDiv.appendChild(textNode);
-                contentDiv.appendChild(timeSpan);
-                
-                // Кнопка удаления
-                const deleteBtn = document.createElement("button");
-                deleteBtn.textContent = "Удалить";
-                deleteBtn.className = "delete-btn";
-                // Передаем msg.id, который мы извлекли выше
-                deleteBtn.onclick = () => deleteMessage(uid, msg.id);
-                
-                li.appendChild(contentDiv);
-                li.appendChild(deleteBtn);
-                messagesList.appendChild(li);
+            // Превращаем в массив и добавляем ID
+            currentMessagesData = Object.entries(data).map(([key, value]) => {
+                return { ...value, id: key };
             });
         } else {
-            // Если сообщений нет
-            const li = document.createElement("li");
-            li.textContent = "Сообщений пока нет. Напишите первое!";
-            li.style.color = "#777";
-            li.style.fontStyle = "italic";
-            li.style.textAlign = "center";
-            li.style.display = "block"; // Сбрасываем flex для пустого сообщения
-            messagesList.appendChild(li);
+            currentMessagesData = [];
         }
+        
+        // Вызываем рендер с учетом текущей сортировки
+        renderMessages();
     }, (error) => {
         console.error("Ошибка чтения из БД:", error);
+    });
+}
+
+// --- Отрисовка сообщений ---
+function renderMessages() {
+    messagesList.innerHTML = ""; 
+
+    if (currentMessagesData.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "Сообщений пока нет. Напишите первое!";
+        li.style.color = "#777";
+        li.style.fontStyle = "italic";
+        li.style.textAlign = "center";
+        li.style.display = "block";
+        messagesList.appendChild(li);
+        return;
+    }
+
+    // Копируем массив, чтобы не мутировать оригинал при сортировке
+    let sorted = [...currentMessagesData];
+
+    // Сортировка
+    sorted.sort((a, b) => {
+        let comparison = 0;
+        
+        if (currentSort.type === 'time') {
+            comparison = a.timestamp - b.timestamp;
+        } else if (currentSort.type === 'text') {
+            comparison = a.text.localeCompare(b.text, 'ru', { sensitivity: 'base' });
+        }
+        
+        // Инвертируем результат для убывания
+        return currentSort.direction === 'asc' ? comparison : -comparison;
+    });
+
+    // Отрисовка
+    sorted.forEach(msg => {
+        const li = document.createElement("li");
+        
+        // Колонка 1: Текст
+        const textDiv = document.createElement("div");
+        textDiv.className = "msg-text-col";
+        textDiv.textContent = msg.text;
+        
+        // Колонка 2: Время
+        const timeDiv = document.createElement("div");
+        timeDiv.className = "msg-time-col";
+        const date = new Date(msg.timestamp);
+        timeDiv.textContent = `${date.toLocaleDateString('ru-RU')} ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+        
+        // Кнопка удаления
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Удалить";
+        deleteBtn.className = "delete-btn";
+        deleteBtn.onclick = () => deleteMessage(auth.currentUser.uid, msg.id);
+        
+        li.appendChild(textDiv);
+        li.appendChild(timeDiv);
+        li.appendChild(deleteBtn);
+        messagesList.appendChild(li);
     });
 }
