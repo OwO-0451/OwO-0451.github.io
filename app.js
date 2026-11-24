@@ -23,18 +23,6 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ============================================================
-// ЧТО СДЕЛАТЬ ПЕРЕД ЗАПУСКОМ (см. README / инструкцию):
-// 1. Firebase Console → Authentication → Sign-in method:
-//    включить Google и (опционально) GitHub.
-// 2. Firebase Console → Authentication → Settings → Authorized domains:
-//    добавить ВАШ домен GitHub Pages (например, username.github.io).
-// 3. Firebase Console → Realtime Database → Rules:
-//    вставить правила из database.rules.json и нажать Publish.
-// 4. Google Cloud Console → APIs & Services → Credentials:
-//    ограничить API-ключ по домену username.github.io и по нужным API.
-// ============================================================
-
 // --- Константы ---
 const PATHS = {
     messages: (uid) => `messages/${uid}`,
