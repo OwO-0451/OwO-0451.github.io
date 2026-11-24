@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
-    <title>Заметки — Модульная версия</title>
+    <title>Заметки — Фаза 1</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -27,19 +27,34 @@
                 <h3 id="user-info"></h3>
             </div>
             <div class="header-actions">
+                <!-- Индикатор показывается ТОЛЬКО когда нет сети (Вариант B) -->
+                <span id="connection-status" class="connection-status idle" title="Нет соединения с Firebase">
+                    <span class="dot"></span> <span id="connection-label">Офлайн</span>
+                </span>
                 <button type="button" id="logout-btn">Выйти</button>
             </div>
         </div>
 
         <hr>
 
-        <form id="data-form">
-            <input type="text" id="data-input" placeholder="Введите сообщение..." maxlength="500" autocomplete="off" required>
-            <button type="submit" id="submit-btn">Отправить</button>
+        <form id="data-form" class="composer">
+            <div class="composer-input-wrap">
+                <textarea id="data-input" placeholder="Введите сообщение... (Markdown поддерживается)" maxlength="500" rows="1" required></textarea>
+                <div class="composer-meta">
+                    <span class="composer-hint">Enter — отправить, Shift+Enter — перенос</span>
+                    <span id="char-counter" class="char-counter">0 / 500</span>
+                </div>
+            </div>
+            <button type="submit" id="submit-btn" class="composer-submit">Отправить</button>
         </form>
 
         <h3>Ваши сообщения <span id="messages-count" class="count"></span></h3>
         
+        <div class="search-panel">
+            <input type="search" id="search-input" class="search-input" placeholder="Поиск по заметкам… (Ctrl+K)" autocomplete="off">
+            <button type="button" id="search-clear" class="search-clear hidden" title="Очистить">×</button>
+        </div>
+
         <div class="sort-panel">
             <span>Сортировать по:</span>
             <button type="button" id="sort-time-btn" class="sort-btn active" aria-pressed="true">Времени ↓</button>
@@ -48,6 +63,13 @@
 
         <ul id="messages-list"></ul>
     </section>
+
+    <!-- Тост для Undo и Копирования -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-text"></span>
+        <button type="button" id="toast-action" class="toast-action hidden"></button>
+        <button type="button" id="toast-close" class="toast-close">×</button>
+    </div>
 
     <script type="module" src="main.js"></script>
 </body>
