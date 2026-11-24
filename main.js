@@ -1,6 +1,8 @@
 import * as Auth from "./auth.js";
 import * as DB from "./database.js";
 import { dom, showError, renderMessages, updateSortButtonsUI, showToast } from "./ui.js";
+import { database } from "./config.js";
+import { ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const loginGithubBtn = document.getElementById("github-login-btn");
 const loginGoogleBtn = document.getElementById("google-login-btn");
@@ -23,8 +25,6 @@ updateSortButtonsUI(currentSort);
 updateCharCounter();
 
 // --- Индикатор соединения (Вариант B) ---
-import { database } from "./config.js";
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 onValue(ref(database, ".info/connected"), (snap) => {
     if (snap.val() === true) {
         dom.connStatus.classList.add("hidden");
@@ -146,17 +146,18 @@ dom.messagesList.addEventListener("click", async (e) => {
     
     // Удалить с Undo
     if (btn.classList.contains("delete-btn")) {
-        const savedData = { text: msg.text, timestamp: msg.timestamp, updatedAt: msg.updatedAt || null };
+        const savedData = { text: msg.text, timestamp: msg.timestamp };
+        if (msg.updatedAt) savedData.updatedAt = msg.updatedAt;
+        
         try {
             await DB.deleteMessage(uid, msgId);
             showToast("Удалено", "Отменить", async () => {
-                const { ref, set } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
                 await set(ref(database, `messages/${uid}/${msgId}`), savedData);
             });
         } catch (err) { showError(err.message); }
     }
 
-    // Редактировать
+    // Редактировать (открыть форму)
     if (btn.classList.contains("edit-btn")) {
         li.querySelector(".msg-text").classList.add("hidden");
         const form = li.querySelector(".msg-edit-form");
@@ -180,7 +181,6 @@ dom.messagesList.addEventListener("click", async (e) => {
         btn.disabled = true;
         try {
             await DB.updateMessage(uid, msgId, newText, msg.timestamp);
-            // После записи сработает onValue и список перерисуется сам
         } catch (err) {
             showError(err.message); btn.disabled = false;
         }
