@@ -14,7 +14,8 @@ export function listenToMessages(uid, onData, onError) {
             messages = Object.entries(data).map(([id, value]) => ({
                 id,
                 text: typeof value?.text === "string" ? value.text : "",
-                timestamp: typeof value?.timestamp === "number" ? value.timestamp : 0
+                timestamp: typeof value?.timestamp === "number" ? value.timestamp : 0,
+                updatedAt: typeof value?.updatedAt === "number" ? value.updatedAt : 0
             }));
         }
         onData(messages);
@@ -23,14 +24,18 @@ export function listenToMessages(uid, onData, onError) {
 
 export async function addMessage(uid, text) {
     const userMessagesRef = ref(database, `messages/${uid}`);
-    const newMessageRef = push(userMessagesRef);
-    await set(newMessageRef, {
-        text: text,
-        timestamp: serverTimestamp()
+    await push(userMessagesRef, { text, timestamp: serverTimestamp() });
+}
+
+export async function updateMessage(uid, msgId, newText, originalTimestamp) {
+    const msgRef = ref(database, `messages/${uid}/${msgId}`);
+    await set(msgRef, {
+        text: newText,
+        timestamp: originalTimestamp,
+        updatedAt: serverTimestamp()
     });
 }
 
 export async function deleteMessage(uid, msgId) {
-    const msgRef = ref(database, `messages/${uid}/${msgId}`);
-    await remove(msgRef);
+    await remove(ref(database, `messages/${uid}/${msgId}`));
 }
