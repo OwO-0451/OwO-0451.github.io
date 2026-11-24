@@ -3,139 +3,378 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auth & Realtime Database</title>
+    <meta name="color-scheme" content="light dark">
+    <title>Заметки — Auth & Realtime Database</title>
     <style>
+        :root {
+            --bg: #f9f9f9;
+            --text: #333;
+            --card-bg: #ffffff;
+            --border: #cccccc;
+            --primary: #007bff;
+            --primary-hover: #0056b3;
+            --danger: #dc3545;
+            --danger-hover: #c82333;
+            --muted: #777777;
+            --secondary: #6c757d;
+            --secondary-hover: #5a6268;
+            --success: #28a745;
+            --success-hover: #218838;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --overlay: rgba(0, 0, 0, 0.5);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --text: #e0e0e0;
+                --card-bg: #2a2a2a;
+                --border: #444444;
+                --muted: #999999;
+                --shadow: rgba(0, 0, 0, 0.35);
+                --overlay: rgba(0, 0, 0, 0.7);
+            }
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
             max-width: 700px;
             margin: 40px auto;
             padding: 0 20px;
-            background-color: #f9f9f9;
-            color: #333;
+            background-color: var(--bg);
+            color: var(--text);
+            transition: background-color 0.2s, color 0.2s;
         }
+
         button {
             padding: 10px 15px;
             margin: 5px 0;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
+            background-color: var(--primary);
+            color: #fff;
             border: none;
             border-radius: 5px;
             font-size: 16px;
-            transition: background-color 0.2s;
+            font-family: inherit;
+            transition: background-color 0.2s, opacity 0.2s;
         }
-        button:hover { background-color: #0056b3; }
-        button#logout-btn { background-color: #dc3545; }
-        button#logout-btn:hover { background-color: #c82333; }
-        
+        button:hover:not(:disabled) { background-color: var(--primary-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        #logout-btn { background-color: var(--danger); }
+        #logout-btn:hover:not(:disabled) { background-color: var(--danger-hover); }
+
         input[type="text"] {
             padding: 10px;
             width: calc(100% - 150px);
             margin-right: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border);
             border-radius: 5px;
             font-size: 16px;
+            font-family: inherit;
+            background-color: var(--card-bg);
+            color: var(--text);
         }
+        input[type="text"]:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 0;
+            border-color: var(--primary);
+        }
+
         form { display: flex; margin-bottom: 20px; }
 
-        /* Панель сортировки */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1 1 200px;
+        }
+        .user-info h3 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            object-fit: cover;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .connection-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .connection-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cccccc;
+            transition: background-color 0.3s;
+        }
+        .connection-status.online .dot { background: var(--success); }
+        .connection-status.offline .dot { background: var(--danger); }
+        .connection-status.idle .dot { background: var(--secondary); }
+        .connection-status.online .label { color: var(--success); font-weight: 600; }
+        .connection-status.offline .label { color: var(--danger); font-weight: 600; }
+
         .sort-panel {
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
             align-items: center;
+            flex-wrap: wrap;
         }
         .sort-btn {
-            background-color: #6c757d;
+            background-color: var(--secondary);
             font-size: 14px;
             padding: 8px 12px;
         }
-        .sort-btn:hover { background-color: #5a6268; }
-        .sort-btn.active { background-color: #28a745; }
-        .sort-btn.active:hover { background-color: #218838; }
+        .sort-btn:hover:not(:disabled) { background-color: var(--secondary-hover); }
+        .sort-btn.active { background-color: var(--success); }
+        .sort-btn.active:hover:not(:disabled) { background-color: var(--success-hover); }
 
-        /* Список сообщений */
         ul { list-style-type: none; padding: 0; }
-        
+
         li {
-            background: white;
+            background: var(--card-bg);
             margin-bottom: 10px;
             padding: 15px;
             border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px var(--shadow);
             display: flex;
             align-items: center;
-            justify-content: space-between; /* Распределяет элементы по краям */
+            gap: 10px;
         }
 
-        /* Две колонки: текст и время */
         .msg-text-col {
-            flex-grow: 1; /* Текст занимает всё свободное место */
+            flex-grow: 1;
+            min-width: 0;
             word-break: break-word;
             font-size: 16px;
-            padding-right: 20px; /* Отступ от времени */
-        }
-        
-        .msg-time-col {
-            font-size: 13px;
-            color: #777; /* Серый цвет */
-            white-space: nowrap;
-            margin-right: 15px; /* Отступ от кнопки удаления */
+            padding-right: 10px;
         }
 
-        /* Стили для кнопки удаления */
+        .msg-time-col {
+            font-size: 13px;
+            color: var(--muted);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
         .delete-btn {
             background-color: transparent;
-            color: #dc3545;
+            color: var(--danger);
             padding: 5px 10px;
             margin: 0;
             font-size: 14px;
-            border: 1px solid #dc3545;
-            flex-shrink: 0; /* Запрещаем кнопке сжиматься */
+            border: 1px solid var(--danger);
+            flex-shrink: 0;
         }
-        .delete-btn:hover {
-            background-color: #dc3545;
-            color: white;
+        .delete-btn:hover:not(:disabled) {
+            background-color: var(--danger);
+            color: #fff;
         }
-        
+
         .hidden { display: none !important; }
+
+        .error-banner {
+            background-color: var(--danger);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .error-banner button {
+            background: transparent;
+            color: #fff;
+            padding: 2px 10px;
+            margin: 0;
+            font-size: 18px;
+            line-height: 1;
+            border: 1px solid #fff;
+        }
+        .error-banner button:hover { background-color: rgba(255,255,255,0.15); }
+
+        .loading,
+        .empty {
+            color: var(--muted);
+            font-style: italic;
+            text-align: center;
+            display: block;
+            padding: 20px;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .count {
+            font-weight: normal;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: var(--overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal {
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 40px var(--shadow);
+        }
+        .modal h3 { margin-top: 0; }
+        .modal p { word-break: break-word; white-space: pre-wrap; }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .modal-actions .danger { background-color: var(--danger); }
+        .modal-actions .danger:hover { background-color: var(--danger-hover); }
+        .modal-actions .secondary { background-color: var(--secondary); }
+        .modal-actions .secondary:hover { background-color: var(--secondary-hover); }
+
+        @media (max-width: 480px) {
+            input[type="text"] {
+                width: 100%;
+                margin: 0 0 10px 0;
+            }
+            form { flex-direction: column; }
+            form button { width: 100%; }
+            .app-header { flex-direction: column; align-items: stretch; }
+            .header-actions { justify-content: space-between; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Секция авторизации -->
-    <div id="auth-section">
-        <h2>Вход в систему</h2>
-        <button id="google-login-btn">Войти через Google</button>
-        <button id="github-login-btn">Войти через GitHub</button>
+    <div id="error-banner" class="error-banner hidden" role="alert" aria-live="assertive">
+        <span id="error-text"></span>
+        <button type="button" id="error-close" aria-label="Закрыть уведомление">×</button>
     </div>
 
-    <!-- Секция приложения (после входа) -->
-    <div id="app-section" class="hidden">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 id="user-info"></h3>
-            <button id="logout-btn">Выйти</button>
+    <section id="auth-section">
+        <h2>Вход в систему</h2>
+        <button type="button" id="google-login-btn">Войти через Google</button>
+        <button type="button" id="github-login-btn">Войти через GitHub</button>
+    </section>
+
+    <section id="app-section" class="hidden">
+        <div class="app-header">
+            <div class="user-info">
+                <img id="user-avatar" class="avatar hidden" alt="">
+                <h3 id="user-info"></h3>
+            </div>
+            <div class="header-actions">
+                <span
+                    id="connection-status"
+                    class="connection-status idle"
+                    role="status"
+                    aria-live="polite"
+                    title="Подключение к Firebase">
+                    <span class="dot" aria-hidden="true"></span>
+                    <span class="label" id="connection-label">Соединение…</span>
+                </span>
+                <button type="button" id="logout-btn">Выйти</button>
+            </div>
         </div>
-        
+
         <hr>
 
         <form id="data-form">
-            <input type="text" id="data-input" placeholder="Введите сообщение..." required>
-            <button type="submit">Отправить</button>
+            <input
+                type="text"
+                id="data-input"
+                placeholder="Введите сообщение..."
+                maxlength="500"
+                autocomplete="off"
+                required>
+            <button type="submit" id="submit-btn">Отправить</button>
         </form>
 
-        <h3>Ваши сообщения:</h3>
-        
-        <!-- Панель кнопок сортировки -->
+        <h3>Ваши сообщения <span id="messages-count" class="count"></span></h3>
+
         <div class="sort-panel">
-            <span>Сортировать по:</span>
-            <button id="sort-time-btn" class="sort-btn active" data-type="time">Времени ↓</button>
-            <button id="sort-text-btn" class="sort-btn" data-type="text">Тексту (А-Я)</button>
+            <span id="sort-label">Сортировать по:</span>
+            <button
+                type="button"
+                id="sort-time-btn"
+                class="sort-btn active"
+                data-type="time"
+                aria-pressed="true"
+                aria-describedby="sort-label">Времени ↓</button>
+            <button
+                type="button"
+                id="sort-text-btn"
+                class="sort-btn"
+                data-type="text"
+                aria-pressed="false"
+                aria-describedby="sort-label">Тексту (А-Я)</button>
         </div>
 
-        <ul id="messages-list">
-            <!-- Сюда будут добавляться сообщения -->
-        </ul>
+        <ul id="messages-list" aria-live="polite" aria-relevant="additions removals"></ul>
+    </section>
+
+    <div
+        id="confirm-modal"
+        class="modal-backdrop hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-text">
+        <div class="modal">
+            <h3 id="confirm-title">Удалить сообщение?</h3>
+            <p id="confirm-text"></p>
+            <div class="modal-actions">
+                <button type="button" class="secondary" id="confirm-cancel">Отмена</button>
+                <button type="button" class="danger" id="confirm-ok">Удалить</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
