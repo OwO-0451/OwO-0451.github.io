@@ -1,7 +1,7 @@
 import * as Auth from "./auth.js";
 import * as DB from "./database.js";
 import { dom, showError, renderMessages, updateSortButtonsUI, showToast } from "./ui.js";
-import { database } from "./config.js";
+import { auth, database } from "./config.js";
 import { ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const loginGithubBtn = document.getElementById("github-login-btn");
@@ -86,7 +86,7 @@ document.addEventListener("keydown", (e) => {
 
 // --- Рендер ---
 function renderCurrent() {
-    renderMessages(currentMessages, currentSort, searchQuery, Auth.auth?.currentUser?.uid);
+    renderMessages(currentMessages, currentSort, searchQuery, auth.currentUser?.uid);
 }
 
 // --- Авторизация ---
@@ -118,11 +118,11 @@ Auth.subscribeToAuth((user) => {
 dataForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = dataInput.value.trim();
-    if (!text || !Auth.auth.currentUser) return;
+    if (!text || !auth.currentUser) return;
 
     submitBtn.disabled = true;
     try {
-        await DB.addMessage(Auth.auth.currentUser.uid, text);
+        await DB.addMessage(auth.currentUser.uid, text);
         dataInput.value = ""; updateCharCounter(); autoResize(dataInput); dataInput.focus();
     } catch (error) {
         showError(error.message);
@@ -136,7 +136,7 @@ dom.messagesList.addEventListener("click", async (e) => {
     const li = btn.closest("li");
     const msgId = li.dataset.id;
     const msg = currentMessages.find(m => m.id === msgId);
-    const uid = Auth.auth?.currentUser?.uid;
+    const uid = auth.currentUser?.uid; // Исправлено здесь
     if (!uid || !msg) return;
 
     // Копировать
