@@ -1,0 +1,30 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "messages": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".indexOn": ["timestamp"],
+
+        "$messageId": {
+          ".validate": "newData.hasChildren(['text', 'timestamp'])",
+
+          "text": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+          },
+
+          "timestamp": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() < (now + 60000)"
+          },
+
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    }
+  }
+}
